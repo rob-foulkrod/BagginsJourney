@@ -1,0 +1,56 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "5.0.x"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build and Test
+        run: |
+          dotnet restore
+          dotnet build --no-restore
+          dotnet test
+          dotnet publish -c Release -o ./out
+
+      - name: Upload to GitHib
+        uses: actions/upload-artifact@v2
+        with:
+          name: webapp
+          path: ./out
+
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts from GitHub
+        uses: actions/download-artifact@V2
+        with:
+          name: webapp
+          path: ./app
+
+      - name: Login via Az module
+        uses: azure/login@v1
+        with:
+          creds: ${{secrets.AZURE_CREDENTIALS}}
+
+      - name: Deploy Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: bagginsjourney
+          package: ./app
