@@ -32,3 +32,25 @@ jobs:
         with:
           name: webapp
           path: ./out
+
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts from GitHub
+        uses: actions/download-artifact@V2
+        with:
+          name: webapp
+          path: ./app
+
+      - name: Login via Az module
+        uses: azure/login@v1
+        with:
+          creds: ${{secrets.AZURE_CREDENTIALS}}
+
+      - name: Deploy Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: bagginsjourney
+          package: ./app
